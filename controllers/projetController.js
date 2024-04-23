@@ -454,7 +454,34 @@ const deleteAllProjects = asyncHandler(async (req, res) => {
     }
 });
 
+const getImageByProjectId = async (req, res) => {
+    const projectId = req.params.projectId; // Extract the project ID from the request parameters
+
+    try {
+        // Construct the path to the image file based on the project ID
+        const imagePath = path.join(__dirname, 'qrs', `${projectId}.png`);
+
+        // Check if the image file exists
+        if (!fs.existsSync(imagePath)) {
+            return res.status(404).json({ message: 'Image not found' });
+        }
+
+        // Set the content type header for response
+        res.setHeader('Content-Type', 'image/png');
+
+        // Create a read stream from the image file
+        const stream = fs.createReadStream(imagePath);
+
+        // Pipe the stream to response object
+        stream.pipe(res);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Internal Server Error' });
+    }
+};
+
 module.exports = {
+    getImageByProjectId,
     createProjectText,
     getAllProjects,
     getProjectById,
