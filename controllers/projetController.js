@@ -154,12 +154,13 @@ const activateProject = async (req, res) => {
 
 /////////////////////////////////Student////////////////////////////////////////////////////////////////////////////////////
 
+
 const postCreateProject = asyncHandler(async (req, res) => {
-    console.log('here is logs',req.body.formaData ,req.file,req.body)
-    const { title, teacherName, module, studentId } = req.body;
+    console.log('Received request body:', req.body);
+    const { title, teacherName, module, studentId, fileContent } = req.body;
 
     // Validate data
-    if (!title || !teacherName || !module || !studentId) {
+    if (!title || !teacherName || !module || !studentId ) {
         return res.status(400).json({ message: 'All fields are required' });
     }
 
@@ -174,34 +175,46 @@ const postCreateProject = asyncHandler(async (req, res) => {
 
         // Save the project to the database
         await project.save();
+        console.log('Project saved:', project);
 
-        const filePath = req.body.fileContent;
-       
-      
-        // Specify the directory where you want to save the file on the server
-        const savePath = path.join(__dirname, 'uploads');
-      
-        // Move the uploaded file to the downloads directory
-       
-      
+        // Specify the directories where you want to save the files
+        const pdfsDir = path.join(__dirname, 'pdfs');
+        const qrsDir = path.join(__dirname, 'qrs');
+
+        // Ensure the directories exist, create if not
+        if (!fs.existsSync(pdfsDir)) {
+            fs.mkdirSync(pdfsDir);
+            console.log('Created directory:', pdfsDir);
+        }
+        if (!fs.existsSync(qrsDir)) {
+            fs.mkdirSync(qrsDir);
+            console.log('Created directory:', qrsDir);
+        }
+
+        // Define file paths
+        const pdfFilePath = path.join(pdfsDir, `${project._id}.pdf`);
+        const qrCodePath = path.join(qrsDir, `${project._id}.png`);
+
+        // Save the file content to the pdf directory
+        fs.writeFileSync(pdfFilePath, fileContent, 'base64');
+        console.log('PDF saved to:', pdfFilePath);
+
         // Generate QR code
         const qrCodeText = project._id.toString();
-        const qrCodePath = `qrs/${project._id}.png`;
-
-        // Generate QR code image and save it
         await qrcode.toFile(qrCodePath, qrCodeText);
+        console.log('QR code generated and saved to:', qrCodePath);
 
-        // Save QR code path to the project
+        // Save QR code path and PDF path to the project
         project.qrCode = qrCodePath;
-
-       
+        project.pdfPath = pdfFilePath;
 
         // Save the project with updated fields to the database
         await project.save();
+        console.log('Project updated with QR code and PDF paths:', project);
 
         res.status(201).json({ message: 'Project created successfully', projectId: project._id });
     } catch (error) {
-        console.error(error);
+        console.error('Error creating project:', error);
         res.status(500).json({ message: 'Internal Server Error' });
     }
 });
